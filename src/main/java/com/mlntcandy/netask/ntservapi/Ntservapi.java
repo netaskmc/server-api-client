@@ -2,9 +2,16 @@ package com.mlntcandy.netask.ntservapi;
 
 import com.mlntcandy.netask.ntservapiclient.APIClient;
 import com.mlntcandy.netask.ntservapiclient.APIResponseExecutorRegister;
+import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.logging.LogUtils;
+import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentUtils;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -24,7 +31,7 @@ import java.util.*;
 public class Ntservapi {
 
     public static final String MODID = "ntservapi";
-    private static final Logger LOGGER = LogUtils.getLogger();
+    public static final Logger LOGGER = LogUtils.getLogger();
     public Ntservapi() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
@@ -59,21 +66,34 @@ public class Ntservapi {
     }
 
     private void registerCommand(RegisterCommandsEvent event, String commandName) {
-        event.getDispatcher().register(Commands.literal(commandName).then(Commands.argument("args", StringArgumentType.greedyString())).executes(cmd -> {
-            String args = StringArgumentType.getString(cmd, "args");
-            ArrayList<String> arrArgs = new ArrayList<>();
+        event.getDispatcher().register(
+                Commands.literal(commandName)
+                        .executes(c -> handleCommand(c, commandName, ""))
+                        .then(
+                                Commands.argument("args", StringArgumentType.greedyString())
+                                        .executes(c -> handleCommand(c, commandName, StringArgumentType.getString(c, "args")))
+                        )
 
-            arrArgs.add(commandName);
-            for (String a : args.split(" ")) {
-                if (!Objects.equals(a, "")) arrArgs.add(a);
-            }
+        );
+    }
 
-            ServerPlayer player = cmd.getSource().getPlayer();
-            if (player == null) return 0;
+    private int handleCommand(CommandContext<CommandSourceStack> cmd, String commandName, String args) {
+        ArrayList<String> arrArgs = new ArrayList<>();
 
-            APIClient.sendMessage(arrArgs.toArray(new String[0]), player.getUUID());
-            return 1;
-        }));
+        arrArgs.add(commandName);
+        for (String a : args.split(" ")) {
+            if (!Objects.equals(a, "")) arrArgs.add(a);
+        }
+
+        ServerPlayer player = cmd.getSource().getPlayer();
+        if (player == null) return 0;
+
+        LOGGER.info("NeTask serverApi client sending command: {}", arrArgs);
+
+        APIClient.sendMessage(arrArgs.toArray(new String[0]), player.getUUID()).thenAccept(s -> {
+            if (!s) cmd.getSource().sendFailure(Component.literal("NeTask API request failed"));
+        });
+        return 1;
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent

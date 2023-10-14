@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.mlntcandy.netask.ntservapi.Config;
+import com.mlntcandy.netask.ntservapi.Ntservapi;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -19,12 +20,12 @@ enum APIResult {
     Success
 }
 class APIResponseSingular {
-    public String type;
+    public String action;
     public String target;
     public String payload;
 
-    public APIResponseSingular(String type, String target, String payload) {
-        this.type = type;
+    public APIResponseSingular(String action, String target, String payload) {
+        this.action = action;
         this.target = target;
         this.payload = payload;
     }
@@ -47,21 +48,27 @@ class APIResponse {
         return result == APIResult.Success && actions != null;
     }
 
-    public void execute() {
+    public boolean execute() {
+        if (!isSuccessful()) {
+            Ntservapi.LOGGER.error("APIResponse is not successful, skipping execution (" + result + " / " + actions.toString() + ")");
+            return false;
+        }
         for (APIResponseSingular a : actions) {
             a.execute();
         }
+        return true;
     }
 }
 
 public class APIClient {
     static final String endpoint = Config.API_ENDPOINT.get();
-    static final String server_token = Config.API_ENDPOINT.get();
+    static final String server_token = Config.SERVER_TOKEN.get();
     static final boolean supports_hex = true;
     private static final Gson gson = new Gson();
 
     static final HttpClient client = HttpClient
             .newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(30))
             .build();
 
@@ -77,21 +84,23 @@ public class APIClient {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(payload)))
                 .build();
-
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(HttpResponse::body)
                 .thenApply((o) -> {
                     APIResponseSingular[] res = gson.fromJson(o, APIResponseSingular[].class);
                     return new APIResponse(APIResult.Success, res);
                 })
-                .exceptionally((throwable -> new APIResponse(APIResult.NetworkError, null)));
+                .exceptionally(throwable -> {
+                    Ntservapi.LOGGER.error("Error while sending request to " + APIClient.endpoint + endpoint + ": " + throwable.getMessage());
+                    return new APIResponse(APIResult.NetworkError, null);
+                });
     }
 
-    private static CompletableFuture<Void> requestThenExecute(String endpoint, JsonObject payload) {
-        return request(endpoint, payload).thenAccept(APIResponse::execute);
+    private static CompletableFuture<Boolean> requestThenExecute(String endpoint, JsonObject payload) {
+        return request(endpoint, payload).thenApply(APIResponse::execute);
     }
 
-    public static CompletableFuture<Void> sendMessage(String[] args, UUID sender) {
+    public static CompletableFuture<Boolean> sendMessage(String[] args, UUID sender) {
         JsonObject payload = new JsonObject();
         JsonArray argsJson = new JsonArray();
         for (String a : args) {
