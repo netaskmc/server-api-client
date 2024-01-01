@@ -96,7 +96,7 @@ public class APIClient {
                 });
     }
 
-    private static CompletableFuture<Boolean> requestThenExecute(String endpoint, JsonObject payload) {
+    public static CompletableFuture<Boolean> requestThenExecute(String endpoint, JsonObject payload) {
         return request(endpoint, payload).thenApply(APIResponse::execute);
     }
 
