@@ -1,6 +1,7 @@
 package com.mlntcandy.netask.ntservapiclient;
 
 import com.mlntcandy.netask.ntservapi.DefaultExecutor;
+import com.mlntcandy.netask.ntservapi.Ntservapi;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.NotNull;
 
@@ -20,7 +21,7 @@ public class APIResponseExecutor {
         try {
             executor.execute(response, server);
         } catch (Exception e) {
-            e.printStackTrace();
+            Ntservapi.LOGGER.error("Error while executing response", e);
         }
         return true;
     }
