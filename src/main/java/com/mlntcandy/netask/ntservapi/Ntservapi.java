@@ -1,6 +1,7 @@
 package com.mlntcandy.netask.ntservapi;
 
 import com.mlntcandy.netask.ntservapiclient.APIClient;
+import com.mlntcandy.netask.ntservapiclient.APIResponseExecutor;
 import com.mlntcandy.netask.ntservapiclient.APIResponseExecutorRegister;
 import com.mojang.brigadier.Message;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -48,7 +49,7 @@ public class Ntservapi {
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         LOGGER.info("NeTask serverApi client initializing...");
-        APIResponseExecutorRegister.register(new APIExecutor());
+        APIResponseExecutorRegister.register(new APIResponseExecutor());
         APIResponseExecutorRegister.setServer(event.getServer());
         LOGGER.info("NeTask serverApi client initialized successfully!");
     }

@@ -15,51 +15,6 @@ import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-enum APIResult {
-    NetworkError,
-    Success
-}
-class APIResponseSingular {
-    public String action;
-    public String target;
-    public String payload;
-
-    public APIResponseSingular(String action, String target, String payload) {
-        this.action = action;
-        this.target = target;
-        this.payload = payload;
-    }
-
-    public void execute() {
-        APIResponseExecutorRegister.execute(this);
-    }
-}
-
-class APIResponse {
-    public APIResult result;
-    public APIResponseSingular[] actions;
-
-    APIResponse(APIResult result, APIResponseSingular[] actions) {
-        this.result = result;
-        this.actions = actions;
-    }
-
-    public boolean isSuccessful() {
-        return result == APIResult.Success && actions != null;
-    }
-
-    public boolean execute() {
-        if (!isSuccessful()) {
-            Ntservapi.LOGGER.error("APIResponse is not successful, skipping execution (" + result + " / " + actions.toString() + ")");
-            return false;
-        }
-        for (APIResponseSingular a : actions) {
-            a.execute();
-        }
-        return true;
-    }
-}
-
 public class APIClient {
     static final String endpoint = Config.API_ENDPOINT.get();
     static final String server_token = Config.SERVER_TOKEN.get();
